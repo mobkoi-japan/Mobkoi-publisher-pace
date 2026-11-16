@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>配信ペーシング管理 | MOBKOI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --app:#f7f7f7; --card:#ffffff; --ink:#1d1d1d; --black:#000000; --muted:#565656; --line:#f2f2f2; --line2:#c7c7c7;
+  --accent:#306fdb; --accent-hover:#2a5fbc;
+  --bad-bg:#faeff0; --bad-bd:#f3cfd0; --bad:#d9534f;
+  --warn-bg:#fffbed; --warn-bd:#ffecac; --warn:#b8901c;
+  --ok-bg:#f1fef5; --ok-bd:#13c155; --ok:#13c155;
+  --r:16px; --r-sm:10px;
+  --font: Inter, "Noto Sans JP", "Hiragino Sans", "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:calc(72px + env(safe-area-inset-top,0px))}
+body{margin:0;background:var(--app);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;padding-bottom:env(safe-area-inset-bottom,0px)}
+a{color:var(--accent)} a:hover{color:var(--accent-hover)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--card)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.top-in{max-width:1360px;margin:0 auto;padding:14px 32px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 24px}
+.brand{font-weight:700;font-size:16px;color:var(--black);letter-spacing:.01em}
+.updated{color:var(--muted);font-size:13px}
+main{max-width:1360px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:28px}
+h1{font-size:30px;line-height:1.3;margin:0;color:var(--black);font-weight:700}
+.lead{margin:8px 0 0;font-size:16px;max-width:60em}
+.lead b{color:var(--black)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.pad{padding:24px}
+h2{font-size:20px;margin:0;color:var(--black);font-weight:700;line-height:1.4}
+h3{font-size:16px;margin:0 0 12px;color:var(--black);font-weight:700}
+.note{color:var(--muted);font-size:12px;margin:12px 0 0}
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.group{all:unset;box-sizing:border-box;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 22px;display:block}
+.group[aria-pressed="true"]{border-color:var(--black)}
+.group-label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;font-weight:500}
+.group-count{font-size:38px;font-weight:600;color:var(--black);line-height:1.2;margin-top:6px}
+.group-note{color:var(--muted);font-size:12px}
+.dot{width:10px;height:10px;border-radius:999px;display:inline-block;flex:none}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:12px;white-space:nowrap;border-bottom:1px solid var(--line)}
+td{padding:14px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+th:first-child,td:first-child{padding-left:24px} th:last-child,td:last-child{padding-right:24px}
+.r{text-align:right;white-space:nowrap}
+.camp-row{cursor:pointer}
+.camp-row:hover td{background:#fafafa}
+.camp-row.is-sel td{background:#f7f9fe}
+.camp-name{all:unset;cursor:pointer;font-weight:600;color:var(--black);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line2)}
+.camp-name:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{position:relative;height:6px;background:var(--line);border-radius:999px;margin-top:6px;min-width:120px}
+.bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--black)}
+.bar-fill.over{background:var(--bad)}
+.bar-pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--accent)}
+.bar-top{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted)}
+.bar-top b{color:var(--black)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;border:1px solid;color:var(--ink)}
+.chip.bad{background:var(--bad-bg);border-color:var(--bad-bd)} .chip.bad .dot{background:var(--bad)}
+.chip.warn{background:var(--warn-bg);border-color:var(--warn-bd)} .chip.warn .dot{background:var(--warn)}
+.chip.ok{background:var(--ok-bg);border-color:var(--ok-bd)} .chip.ok .dot{background:var(--ok)}
+.chip.neutral{background:var(--line);border-color:var(--line2)} .chip.neutral .dot{background:#7e7e7e}
+.chip .dot{width:8px;height:8px}
+.action-cell{min-width:240px}
+.detail-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
+.detail-meta{color:var(--muted)}
+.callout{display:flex;gap:12px;align-items:flex-start;padding:16px 20px;border-radius:var(--r);border:1px solid}
+.callout.bad{background:var(--bad-bg);border-color:var(--bad-bd)}
+.callout.warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+.callout.ok{background:var(--ok-bg);border-color:var(--ok-bd)}
+.callout.neutral{background:var(--card);border-color:var(--line2)}
+.callout strong{display:block;color:var(--black)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.kpi{padding:18px 22px}
+.kpi-label{color:var(--muted);font-size:13px;font-weight:500}
+.kpi-value{font-size:28px;font-weight:600;color:var(--black);line-height:1.3;margin-top:4px}
+.kpi-sub{color:var(--muted);font-size:12px;margin-top:2px}
+.plan{border-color:var(--black)}
+.toggles{display:flex;flex-wrap:wrap;gap:24px;margin-bottom:20px}
+.tg-label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.tg{display:flex;flex-wrap:wrap;gap:8px}
+.tg button{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line2);background:var(--card);cursor:pointer;font-weight:500}
+.tg button[aria-pressed="true"]{background:var(--black);border-color:var(--black);color:#fff}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.plan-cell{background:var(--app);border-radius:var(--r);padding:18px 22px}
+.plan-cell.main{background:var(--black);color:#fff}
+.plan-cell.main .kpi-label,.plan-cell.main .kpi-sub{color:#c7c7c7}
+.plan-cell.main .kpi-value{color:#fff;font-size:32px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:16px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;color:var(--muted);font-size:12px;margin-bottom:8px}
+.sw{display:inline-block;width:16px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+.sw.box{width:10px;height:10px}
+.chart{position:relative;min-height:260px}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{font-family:var(--font);font-size:11px;fill:var(--muted)}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line2);border-radius:var(--r-sm);padding:6px 10px;font-size:12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.events li{display:flex;gap:16px;padding:12px 16px;border-radius:var(--r-sm);background:var(--app)}
+.ev-date{flex:none;width:3.5em;color:var(--muted);font-size:12px;padding-top:2px}
+.ev-title{font-weight:600;color:var(--black)}
+.ev-body{color:var(--muted);font-size:13px}
+.role{font-size:13px}
+details summary{cursor:pointer;font-weight:600;color:var(--black);min-height:44px;display:flex;align-items:center}
+details p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:70em}
+.err{padding:24px;border-radius:var(--r);background:var(--bad-bg);border:1px solid var(--bad-bd)}
+[hidden]{display:none!important}
+@media (max-width:640px){
+  .top-in,main{padding-left:16px;padding-right:16px}
+  h1{font-size:24px}
+  .pad{padding:18px}
+  th:first-child,td:first-child{padding-left:16px} th:last-child,td:last-child{padding-right:16px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">Delivery Pacing</div>
+    <div class="updated">データ最終時刻 <span id="asof" class="num">…</span></div>
+  </div>
+</header>
+
+<main id="app">
+  <div id="load-error" class="err" hidden></div>
+
+  <section>
+    <h1>配信ペーシング管理</h1>
+    <p class="lead" id="lead">読み込み中です。</p>
+  </section>
+
+  <div class="groups" id="groups" role="group" aria-label="ステータスで絞り込み"></div>
+
+  <section class="card">
+    <div class="pad" style="padding-bottom:12px"><h2>キャンペーン一覧</h2></div>
+    <div class="scroll">
+      <table class="num" style="min-width:1100px">
+        <thead><tr>
+          <th>キャンペーン</th><th>期間</th><th class="r">約束Imp</th><th class="r">配信済</th>
+          <th style="width:200px">進捗率（青線は均等ペース）</th><th class="r">着地予測</th><th>ステータス</th><th>次のアクション</th>
+        </tr></thead>
+        <tbody id="camp-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="detail" style="display:flex;flex-direction:column;gap:16px" aria-live="polite">
+    <div class="detail-head">
+      <h2 id="d-name" style="font-size:26px">…</h2>
+      <span id="d-chip"></span>
+      <span class="detail-meta" id="d-meta"></span>
+    </div>
+    <div class="callout neutral" id="d-callout"><div><strong>次のアクション</strong><span id="d-action"></span></div></div>
+
+    <div class="kpis num">
+      <div class="card kpi"><div class="kpi-label">約束Imp</div><div class="kpi-value" id="k-goal">…</div><div class="kpi-sub">キャンペーン設定の goal imp</div></div>
+      <div class="card kpi"><div class="kpi-label">配信済</div><div class="kpi-value" id="k-del">…</div><div class="kpi-sub" id="k-del-sub"></div></div>
+      <div class="card kpi"><div class="kpi-label">進捗率</div><div class="kpi-value" id="k-prog">…</div><div class="kpi-sub" id="k-prog-sub"></div></div>
+      <div class="card kpi"><div class="kpi-label">着地予測</div><div class="kpi-value" id="k-fc">…</div><div class="kpi-sub" id="k-fc-sub"></div></div>
+      <div class="card kpi"><div class="kpi-label">直近24時間の配信</div><div class="kpi-value" id="k-24">…</div><div class="kpi-sub" id="k-24-sub"></div></div>
+    </div>
+
+    <section class="card pad plan" id="plan">
+      <h3>停止計画</h3>
+      <div class="toggles">
+        <div><div class="tg-label">目標着地率</div><div class="tg" id="tg-target" role="group" aria-label="目標着地率"></div></div>
+        <div><div class="tg-label">停止ラグ（指示から実際に止まるまで）</div><div class="tg" id="tg-lag" role="group" aria-label="停止ラグ"></div></div>
+      </div>
+      <div class="plan-grid num">
+        <div class="plan-cell main"><div class="kpi-label">停止指示の推奨時刻</div><div class="kpi-value" id="p-stop">…</div><div class="kpi-sub" id="p-note"></div></div>
+        <div class="plan-cell"><div class="kpi-label">目標到達の予測時刻</div><div class="kpi-value" id="p-reach">…</div><div class="kpi-sub" id="p-need"></div></div>
+        <div class="plan-cell"><div class="kpi-label">このまま継続した場合との差</div><div class="kpi-value" id="p-save">…</div><div class="kpi-sub">削減できるImp（Mobkoi負担分）</div></div>
+        <div class="plan-cell"><div class="kpi-label">101%で着地する日次ペース</div><div class="kpi-value" id="p-req">…</div><div class="kpi-sub" id="p-req-sub"></div></div>
+      </div>
+      <p class="note">予測は直近24時間のペースが期間終了まで続く前提です。残り期間が長い場合は、停止時刻よりも日次ペースの調整を優先してください。</p>
+    </section>
+
+    <section class="card pad" id="retro" hidden>
+      <h3>振り返り</h3>
+      <div class="plan-grid num">
+        <div class="plan-cell"><div class="kpi-label">100%到達</div><div class="kpi-value" id="r-100">…</div></div>
+        <div class="plan-cell"><div class="kpi-label">101%到達</div><div class="kpi-value" id="r-101">…</div></div>
+        <div class="plan-cell"><div class="kpi-label">約束Impの超過分</div><div class="kpi-value" id="r-over">…</div></div>
+      </div>
+    </section>
+
+    <div class="two">
+      <section class="card pad">
+        <h3>累計進捗と均等ペース（約束Imp比）</h3>
+        <div class="legend"><span><span class="sw" style="background:var(--black)"></span>累計進捗</span><span><span class="sw" style="background:var(--accent)"></span>均等ペース</span><span><span class="sw" style="background:var(--bad)"></span>100%</span></div>
+        <div class="chart" id="chart-cum"></div>
+      </section>
+      <section class="card pad">
+        <h3>日別配信量</h3>
+        <div class="legend"><span><span class="sw box" style="background:var(--black)"></span>期間内</span><span><span class="sw box" style="background:var(--line2)"></span>期間外</span></div>
+        <div class="chart" id="chart-daily"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="pad" style="padding-bottom:12px"><h3 style="margin:0">媒体別の状況と推奨アクション</h3></div>
+      <div class="scroll">
+        <table class="num" style="min-width:760px">
+          <thead><tr><th>媒体</th><th class="r">累計Imp</th><th class="r">シェア</th><th class="r">直近24時間</th><th class="r">日別ばらつき</th><th>推奨アクション</th></tr></thead>
+          <tbody id="pub-rows"></tbody>
+        </table>
+      </div>
+      <p class="note" style="padding:0 24px 20px">日別ばらつきは日別配信量の変動係数です。小さい媒体ほど毎日同じ量を配信するので、終盤の調整役に向いています。</p>
+    </section>
+
+    <section class="card pad">
+      <h3>検知されたイベント</h3>
+      <ul class="events" id="events"></ul>
+    </section>
+  </section>
+
+  <details class="card pad">
+    <summary>指標とステータスの定義</summary>
+    <p>進捗率は配信済Imp ÷ 約束Imp です。均等ペースは、期間（開始日0時〜終了日24時、JST）のうち経過した時間の割合です。着地予測は、配信済に「直近24時間の配信量 ÷ 24 × 残り時間」を足した値です。</p>
+    <p>配信中のステータスは、着地予測が100%未満なら未達リスク、100〜103%なら順調、103%超なら超過リスク、既に100%を超えて配信が続いていれば超過中です。終了したキャンペーンは最終進捗率で未達・適正（100〜103%）・超過に分けます。</p>
+    <p>元データの時刻はUTCのため、9時間足してJSTに変換しています。スパイクは、媒体の日別配信量が直前7日平均の2.5倍超かつ約束Impの1%超の日です。</p>
+  </details>
+</main>
+
+<script>
+/* ===== 設定 =====
+   DATA_URL を空にすると、このファイルに埋め込まれたデータを表示します。
+   GAS の Web アプリなどで同じ形式の JSON を返す URL を指定すると、開くたびに最新データを読み込みます。 */
+var CONFIG = { DATA_URL: '' };
+</script>
+<script id="embedded-data" type="application/json">{"campaigns": [{"campaign": "intimissimi", "start": "2026-09-27", "end": "2026-11-30", "period": "9/27〜11/30", "days": 65, "goal": 2040000, "delivered": 2305648, "progressPct": 113.0, "pacePct": 77.7, "gapPt": 35.3, "last24": 20565, "ratePerHour": 857, "remainingHours": 348, "forecast": 2603840, "forecastPct": 127.6, "live": "配信中", "status": "超過中", "action": "約束Impを 265,648 Imp 超過して配信継続中。全媒体の配信停止を推奨", "reach100": "11/11 11:00", "reach101": "11/11 14:00", "overImp": 265648, "reqDaily101": -16914, "curDaily": 20565, "asof": "11/16 12:00", "pubCount": 5}, {"campaign": "ROLEX TIFF", "start": "2026-10-01", "end": "2026-11-18", "period": "10/1〜11/18", "days": 49, "goal": 2254902, "delivered": 2651273, "progressPct": 117.6, "pacePct": 94.9, "gapPt": 22.7, "last24": 0, "ratePerHour": 0, "remainingHours": 60, "forecast": 2651273, "forecastPct": 117.6, "live": "配信中", "status": "超過・停止済み", "action": "超過 396,371 Imp。配信は停止済み（再開しないよう確認）", "reach100": "10/29 20:00", "reach101": "10/29 22:00", "overImp": 396371, "reqDaily101": -149529, "curDaily": 0, "asof": "11/16 12:00", "pubCount": 10}, {"campaign": "Ralph Lauren", "start": "2026-10-20", "end": "2026-12-15", "period": "10/20〜12/15", "days": 57, "goal": 2000000, "delivered": 1231157, "progressPct": 61.6, "pacePct": 48.2, "gapPt": 13.3, "last24": 37810, "ratePerHour": 1575, "remainingHours": 708, "forecast": 2346552, "forecastPct": 117.3, "live": "配信中", "status": "超過リスク", "action": "日次ペースを 26,740 Imp に抑制（現在 37,810、71%）", "reach100": "未到達", "reach101": "未到達", "overImp": 0, "reqDaily101": 26740, "curDaily": 37810, "asof": "11/16 12:00", "pubCount": 11}, {"campaign": "Apple", "start": "2026-09-17", "end": "2026-09-24", "period": "9/17〜9/24", "days": 8, "goal": 1250000, "delivered": 1160388, "progressPct": 92.8, "pacePct": 100.0, "gapPt": -7.2, "last24": 149666, "ratePerHour": 6236, "remainingHours": 0, "forecast": 1160388, "forecastPct": 92.8, "live": "終了", "status": "終了・未達", "action": "不足 89,612 Imp。補填の要否を確認", "reach100": "未到達", "reach101": "未到達", "overImp": 0, "reqDaily101": null, "curDaily": 149666, "asof": "9/25 00:00", "pubCount": 7}, {"campaign": "Air France", "start": "2026-10-15", "end": "2026-11-01", "period": "10/15〜11/1", "days": 18, "goal": 1495384, "delivered": 1571893, "progressPct": 105.1, "pacePct": 100.0, "gapPt": 5.1, "last24": 37949, "ratePerHour": 1581, "remainingHours": 0, "forecast": 1571893, "forecastPct": 105.1, "live": "終了", "status": "終了・超過", "action": "超過 76,509 Imp（101%で止めていれば 61,555 Imp 削減）", "reach100": "10/31 13:00", "reach101": "10/31 18:00", "overImp": 76509, "reqDaily101": null, "curDaily": 37949, "asof": "11/2 00:00", "pubCount": 10}], "daily": [{"campaign": "intimissimi", "date": "2026-09-21", "imp": 4, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "intimissimi", "date": "2026-09-22", "imp": 0, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "intimissimi", "date": "2026-09-23", "imp": 0, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "intimissimi", "date": "2026-09-24", "imp": 5, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "intimissimi", "date": "2026-09-25", "imp": 10, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "intimissimi", "date": "2026-09-26", "imp": 0, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "intimissimi", "date": "2026-09-27", "imp": 0, "cumPct": 0.0, "pacePct": 1.54}, {"campaign": "intimissimi", "date": "2026-09-28", "imp": 258066, "cumPct": 12.65, "pacePct": 3.08}, {"campaign": "intimissimi", "date": "2026-09-29", "imp": 196853, "cumPct": 22.3, "pacePct": 4.62}, {"campaign": "intimissimi", "date": "2026-09-30", "imp": 49256, "cumPct": 24.72, "pacePct": 6.15}, {"campaign": "intimissimi", "date": "2026-10-01", "imp": 43213, "cumPct": 26.83, "pacePct": 7.69}, {"campaign": "intimissimi", "date": "2026-10-02", "imp": 41501, "cumPct": 28.87, "pacePct": 9.23}, {"campaign": "intimissimi", "date": "2026-10-03", "imp": 42523, "cumPct": 30.95, "pacePct": 10.77}, {"campaign": "intimissimi", "date": "2026-10-04", "imp": 41663, "cumPct": 32.99, "pacePct": 12.31}, {"campaign": "intimissimi", "date": "2026-10-05", "imp": 41811, "cumPct": 35.04, "pacePct": 13.85}, {"campaign": "intimissimi", "date": "2026-10-06", "imp": 37736, "cumPct": 36.89, "pacePct": 15.38}, {"campaign": "intimissimi", "date": "2026-10-07", "imp": 37354, "cumPct": 38.73, "pacePct": 16.92}, {"campaign": "intimissimi", "date": "2026-10-08", "imp": 38990, "cumPct": 40.64, "pacePct": 18.46}, {"campaign": "intimissimi", "date": "2026-10-09", "imp": 40266, "cumPct": 42.61, "pacePct": 20.0}, {"campaign": "intimissimi", "date": "2026-10-10", "imp": 42312, "cumPct": 44.68, "pacePct": 21.54}, {"campaign": "intimissimi", "date": "2026-10-11", "imp": 40106, "cumPct": 46.65, "pacePct": 23.08}, {"campaign": "intimissimi", "date": "2026-10-12", "imp": 38255, "cumPct": 48.53, "pacePct": 24.62}, {"campaign": "intimissimi", "date": "2026-10-13", "imp": 35711, "cumPct": 50.28, "pacePct": 26.15}, {"campaign": "intimissimi", "date": "2026-10-14", "imp": 35900, "cumPct": 52.04, "pacePct": 27.69}, {"campaign": "intimissimi", "date": "2026-10-15", "imp": 33513, "cumPct": 53.68, "pacePct": 29.23}, {"campaign": "intimissimi", "date": "2026-10-16", "imp": 35178, "cumPct": 55.4, "pacePct": 30.77}, {"campaign": "intimissimi", "date": "2026-10-17", "imp": 37311, "cumPct": 57.23, "pacePct": 32.31}, {"campaign": "intimissimi", "date": "2026-10-18", "imp": 32135, "cumPct": 58.81, "pacePct": 33.85}, {"campaign": "intimissimi", "date": "2026-10-19", "imp": 32823, "cumPct": 60.42, "pacePct": 35.38}, {"campaign": "intimissimi", "date": "2026-10-20", "imp": 29041, "cumPct": 61.84, "pacePct": 36.92}, {"campaign": "intimissimi", "date": "2026-10-21", "imp": 29081, "cumPct": 63.27, "pacePct": 38.46}, {"campaign": "intimissimi", "date": "2026-10-22", "imp": 28079, "cumPct": 64.64, "pacePct": 40.0}, {"campaign": "intimissimi", "date": "2026-10-23", "imp": 27418, "cumPct": 65.99, "pacePct": 41.54}, {"campaign": "intimissimi", "date": "2026-10-24", "imp": 28617, "cumPct": 67.39, "pacePct": 43.08}, {"campaign": "intimissimi", "date": "2026-10-25", "imp": 24103, "cumPct": 68.57, "pacePct": 44.62}, {"campaign": "intimissimi", "date": "2026-10-26", "imp": 26376, "cumPct": 69.86, "pacePct": 46.15}, {"campaign": "intimissimi", "date": "2026-10-27", "imp": 26707, "cumPct": 71.17, "pacePct": 47.69}, {"campaign": "intimissimi", "date": "2026-10-28", "imp": 22909, "cumPct": 72.3, "pacePct": 49.23}, {"campaign": "intimissimi", "date": "2026-10-29", "imp": 19759, "cumPct": 73.26, "pacePct": 50.77}, {"campaign": "intimissimi", "date": "2026-10-30", "imp": 16948, "cumPct": 74.09, "pacePct": 52.31}, {"campaign": "intimissimi", "date": "2026-10-31", "imp": 12722, "cumPct": 74.72, "pacePct": 53.85}, {"campaign": "intimissimi", "date": "2026-11-01", "imp": 50669, "cumPct": 77.2, "pacePct": 55.38}, {"campaign": "intimissimi", "date": "2026-11-02", "imp": 47736, "cumPct": 79.54, "pacePct": 56.92}, {"campaign": "intimissimi", "date": "2026-11-03", "imp": 35481, "cumPct": 81.28, "pacePct": 58.46}, {"campaign": "intimissimi", "date": "2026-11-04", "imp": 13086, "cumPct": 81.92, "pacePct": 60.0}, {"campaign": "intimissimi", "date": "2026-11-05", "imp": 45370, "cumPct": 84.15, "pacePct": 61.54}, {"campaign": "intimissimi", "date": "2026-11-06", "imp": 48981, "cumPct": 86.55, "pacePct": 63.08}, {"campaign": "intimissimi", "date": "2026-11-07", "imp": 48600, "cumPct": 88.93, "pacePct": 64.62}, {"campaign": "intimissimi", "date": "2026-11-08", "imp": 47749, "cumPct": 91.27, "pacePct": 66.15}, {"campaign": "intimissimi", "date": "2026-11-09", "imp": 51731, "cumPct": 93.81, "pacePct": 67.69}, {"campaign": "intimissimi", "date": "2026-11-10", "imp": 73469, "cumPct": 97.41, "pacePct": 69.23}, {"campaign": "intimissimi", "date": "2026-11-11", "imp": 136347, "cumPct": 104.09, "pacePct": 70.77}, {"campaign": "intimissimi", "date": "2026-11-12", "imp": 87961, "cumPct": 108.4, "pacePct": 72.31}, {"campaign": "intimissimi", "date": "2026-11-13", "imp": 43493, "cumPct": 110.54, "pacePct": 73.85}, {"campaign": "intimissimi", "date": "2026-11-14", "imp": 21425, "cumPct": 111.59, "pacePct": 75.38}, {"campaign": "intimissimi", "date": "2026-11-15", "imp": 21834, "cumPct": 112.66, "pacePct": 76.92}, {"campaign": "intimissimi", "date": "2026-11-16", "imp": 7461, "cumPct": 113.02, "pacePct": 78.46}, {"campaign": "ROLEX TIFF", "date": "2026-10-01", "imp": 0, "cumPct": 0.0, "pacePct": 2.04}, {"campaign": "ROLEX TIFF", "date": "2026-10-02", "imp": 0, "cumPct": 0.0, "pacePct": 4.08}, {"campaign": "ROLEX TIFF", "date": "2026-10-03", "imp": 0, "cumPct": 0.0, "pacePct": 6.12}, {"campaign": "ROLEX TIFF", "date": "2026-10-04", "imp": 0, "cumPct": 0.0, "pacePct": 8.16}, {"campaign": "ROLEX TIFF", "date": "2026-10-05", "imp": 0, "cumPct": 0.0, "pacePct": 10.2}, {"campaign": "ROLEX TIFF", "date": "2026-10-06", "imp": 0, "cumPct": 0.0, "pacePct": 12.24}, {"campaign": "ROLEX TIFF", "date": "2026-10-07", "imp": 0, "cumPct": 0.0, "pacePct": 14.29}, {"campaign": "ROLEX TIFF", "date": "2026-10-08", "imp": 0, "cumPct": 0.0, "pacePct": 16.33}, {"campaign": "ROLEX TIFF", "date": "2026-10-09", "imp": 0, "cumPct": 0.0, "pacePct": 18.37}, {"campaign": "ROLEX TIFF", "date": "2026-10-10", "imp": 0, "cumPct": 0.0, "pacePct": 20.41}, {"campaign": "ROLEX TIFF", "date": "2026-10-11", "imp": 0, "cumPct": 0.0, "pacePct": 22.45}, {"campaign": "ROLEX TIFF", "date": "2026-10-12", "imp": 0, "cumPct": 0.0, "pacePct": 24.49}, {"campaign": "ROLEX TIFF", "date": "2026-10-13", "imp": 0, "cumPct": 0.0, "pacePct": 26.53}, {"campaign": "ROLEX TIFF", "date": "2026-10-14", "imp": 0, "cumPct": 0.0, "pacePct": 28.57}, {"campaign": "ROLEX TIFF", "date": "2026-10-15", "imp": 0, "cumPct": 0.0, "pacePct": 30.61}, {"campaign": "ROLEX TIFF", "date": "2026-10-16", "imp": 0, "cumPct": 0.0, "pacePct": 32.65}, {"campaign": "ROLEX TIFF", "date": "2026-10-17", "imp": 0, "cumPct": 0.0, "pacePct": 34.69}, {"campaign": "ROLEX TIFF", "date": "2026-10-18", "imp": 0, "cumPct": 0.0, "pacePct": 36.73}, {"campaign": "ROLEX TIFF", "date": "2026-10-19", "imp": 187772, "cumPct": 8.33, "pacePct": 38.78}, {"campaign": "ROLEX TIFF", "date": "2026-10-20", "imp": 342593, "cumPct": 23.52, "pacePct": 40.82}, {"campaign": "ROLEX TIFF", "date": "2026-10-21", "imp": 282103, "cumPct": 36.03, "pacePct": 42.86}, {"campaign": "ROLEX TIFF", "date": "2026-10-22", "imp": 240472, "cumPct": 46.7, "pacePct": 44.9}, {"campaign": "ROLEX TIFF", "date": "2026-10-23", "imp": 215558, "cumPct": 56.26, "pacePct": 46.94}, {"campaign": "ROLEX TIFF", "date": "2026-10-24", "imp": 214169, "cumPct": 65.75, "pacePct": 48.98}, {"campaign": "ROLEX TIFF", "date": "2026-10-25", "imp": 166129, "cumPct": 73.12, "pacePct": 51.02}, {"campaign": "ROLEX TIFF", "date": "2026-10-26", "imp": 149408, "cumPct": 79.75, "pacePct": 53.06}, {"campaign": "ROLEX TIFF", "date": "2026-10-27", "imp": 113954, "cumPct": 84.8, "pacePct": 55.1}, {"campaign": "ROLEX TIFF", "date": "2026-10-28", "imp": 128272, "cumPct": 90.49, "pacePct": 57.14}, {"campaign": "ROLEX TIFF", "date": "2026-10-29", "imp": 265310, "cumPct": 102.25, "pacePct": 59.18}, {"campaign": "ROLEX TIFF", "date": "2026-10-30", "imp": 110803, "cumPct": 107.17, "pacePct": 61.22}, {"campaign": "ROLEX TIFF", "date": "2026-10-31", "imp": 115236, "cumPct": 112.28, "pacePct": 63.27}, {"campaign": "ROLEX TIFF", "date": "2026-11-01", "imp": 115263, "cumPct": 117.39, "pacePct": 65.31}, {"campaign": "ROLEX TIFF", "date": "2026-11-02", "imp": 4231, "cumPct": 117.58, "pacePct": 67.35}, {"campaign": "ROLEX TIFF", "date": "2026-11-03", "imp": 0, "cumPct": 117.58, "pacePct": 69.39}, {"campaign": "ROLEX TIFF", "date": "2026-11-04", "imp": 0, "cumPct": 117.58, "pacePct": 71.43}, {"campaign": "ROLEX TIFF", "date": "2026-11-05", "imp": 0, "cumPct": 117.58, "pacePct": 73.47}, {"campaign": "ROLEX TIFF", "date": "2026-11-06", "imp": 0, "cumPct": 117.58, "pacePct": 75.51}, {"campaign": "ROLEX TIFF", "date": "2026-11-07", "imp": 0, "cumPct": 117.58, "pacePct": 77.55}, {"campaign": "ROLEX TIFF", "date": "2026-11-08", "imp": 0, "cumPct": 117.58, "pacePct": 79.59}, {"campaign": "ROLEX TIFF", "date": "2026-11-09", "imp": 0, "cumPct": 117.58, "pacePct": 81.63}, {"campaign": "ROLEX TIFF", "date": "2026-11-10", "imp": 0, "cumPct": 117.58, "pacePct": 83.67}, {"campaign": "ROLEX TIFF", "date": "2026-11-11", "imp": 0, "cumPct": 117.58, "pacePct": 85.71}, {"campaign": "ROLEX TIFF", "date": "2026-11-12", "imp": 0, "cumPct": 117.58, "pacePct": 87.76}, {"campaign": "ROLEX TIFF", "date": "2026-11-13", "imp": 0, "cumPct": 117.58, "pacePct": 89.8}, {"campaign": "ROLEX TIFF", "date": "2026-11-14", "imp": 0, "cumPct": 117.58, "pacePct": 91.84}, {"campaign": "ROLEX TIFF", "date": "2026-11-15", "imp": 0, "cumPct": 117.58, "pacePct": 93.88}, {"campaign": "ROLEX TIFF", "date": "2026-11-16", "imp": 0, "cumPct": 117.58, "pacePct": 95.92}, {"campaign": "Ralph Lauren", "date": "2026-10-19", "imp": 47, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "Ralph Lauren", "date": "2026-10-20", "imp": 93, "cumPct": 0.01, "pacePct": 1.75}, {"campaign": "Ralph Lauren", "date": "2026-10-21", "imp": 39272, "cumPct": 1.97, "pacePct": 3.51}, {"campaign": "Ralph Lauren", "date": "2026-10-22", "imp": 55918, "cumPct": 4.77, "pacePct": 5.26}, {"campaign": "Ralph Lauren", "date": "2026-10-23", "imp": 49197, "cumPct": 7.23, "pacePct": 7.02}, {"campaign": "Ralph Lauren", "date": "2026-10-24", "imp": 50621, "cumPct": 9.76, "pacePct": 8.77}, {"campaign": "Ralph Lauren", "date": "2026-10-25", "imp": 50552, "cumPct": 12.28, "pacePct": 10.53}, {"campaign": "Ralph Lauren", "date": "2026-10-26", "imp": 64926, "cumPct": 15.53, "pacePct": 12.28}, {"campaign": "Ralph Lauren", "date": "2026-10-27", "imp": 74189, "cumPct": 19.24, "pacePct": 14.04}, {"campaign": "Ralph Lauren", "date": "2026-10-28", "imp": 63187, "cumPct": 22.4, "pacePct": 15.79}, {"campaign": "Ralph Lauren", "date": "2026-10-29", "imp": 43197, "cumPct": 24.56, "pacePct": 17.54}, {"campaign": "Ralph Lauren", "date": "2026-10-30", "imp": 45203, "cumPct": 26.82, "pacePct": 19.3}, {"campaign": "Ralph Lauren", "date": "2026-10-31", "imp": 43426, "cumPct": 28.99, "pacePct": 21.05}, {"campaign": "Ralph Lauren", "date": "2026-11-01", "imp": 48528, "cumPct": 31.42, "pacePct": 22.81}, {"campaign": "Ralph Lauren", "date": "2026-11-02", "imp": 48189, "cumPct": 33.83, "pacePct": 24.56}, {"campaign": "Ralph Lauren", "date": "2026-11-03", "imp": 32312, "cumPct": 35.44, "pacePct": 26.32}, {"campaign": "Ralph Lauren", "date": "2026-11-04", "imp": 27897, "cumPct": 36.84, "pacePct": 28.07}, {"campaign": "Ralph Lauren", "date": "2026-11-05", "imp": 33702, "cumPct": 38.52, "pacePct": 29.82}, {"campaign": "Ralph Lauren", "date": "2026-11-06", "imp": 30405, "cumPct": 40.04, "pacePct": 31.58}, {"campaign": "Ralph Lauren", "date": "2026-11-07", "imp": 29893, "cumPct": 41.54, "pacePct": 33.33}, {"campaign": "Ralph Lauren", "date": "2026-11-08", "imp": 29578, "cumPct": 43.02, "pacePct": 35.09}, {"campaign": "Ralph Lauren", "date": "2026-11-09", "imp": 72323, "cumPct": 46.63, "pacePct": 36.84}, {"campaign": "Ralph Lauren", "date": "2026-11-10", "imp": 78968, "cumPct": 50.58, "pacePct": 38.6}, {"campaign": "Ralph Lauren", "date": "2026-11-11", "imp": 57059, "cumPct": 53.43, "pacePct": 40.35}, {"campaign": "Ralph Lauren", "date": "2026-11-12", "imp": 32501, "cumPct": 55.06, "pacePct": 42.11}, {"campaign": "Ralph Lauren", "date": "2026-11-13", "imp": 31193, "cumPct": 56.62, "pacePct": 43.86}, {"campaign": "Ralph Lauren", "date": "2026-11-14", "imp": 36594, "cumPct": 58.45, "pacePct": 45.61}, {"campaign": "Ralph Lauren", "date": "2026-11-15", "imp": 47645, "cumPct": 60.83, "pacePct": 47.37}, {"campaign": "Ralph Lauren", "date": "2026-11-16", "imp": 14542, "cumPct": 61.56, "pacePct": 49.12}, {"campaign": "Apple", "date": "2026-09-17", "imp": 0, "cumPct": 0.0, "pacePct": 12.5}, {"campaign": "Apple", "date": "2026-09-18", "imp": 96615, "cumPct": 7.73, "pacePct": 25.0}, {"campaign": "Apple", "date": "2026-09-19", "imp": 190572, "cumPct": 22.97, "pacePct": 37.5}, {"campaign": "Apple", "date": "2026-09-20", "imp": 187684, "cumPct": 37.99, "pacePct": 50.0}, {"campaign": "Apple", "date": "2026-09-21", "imp": 192070, "cumPct": 53.36, "pacePct": 62.5}, {"campaign": "Apple", "date": "2026-09-22", "imp": 172490, "cumPct": 67.15, "pacePct": 75.0}, {"campaign": "Apple", "date": "2026-09-23", "imp": 171263, "cumPct": 80.86, "pacePct": 87.5}, {"campaign": "Apple", "date": "2026-09-24", "imp": 149666, "cumPct": 92.83, "pacePct": 100.0}, {"campaign": "Air France", "date": "2026-10-08", "imp": 18, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-09", "imp": 7, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-10", "imp": 33, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-11", "imp": 0, "cumPct": 0.0, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-12", "imp": 76778, "cumPct": 5.14, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-13", "imp": 96069, "cumPct": 11.56, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-14", "imp": 98604, "cumPct": 18.16, "pacePct": 0.0}, {"campaign": "Air France", "date": "2026-10-15", "imp": 88971, "cumPct": 24.11, "pacePct": 5.56}, {"campaign": "Air France", "date": "2026-10-16", "imp": 88938, "cumPct": 30.05, "pacePct": 11.11}, {"campaign": "Air France", "date": "2026-10-17", "imp": 87748, "cumPct": 35.92, "pacePct": 16.67}, {"campaign": "Air France", "date": "2026-10-18", "imp": 83478, "cumPct": 41.5, "pacePct": 22.22}, {"campaign": "Air France", "date": "2026-10-19", "imp": 80097, "cumPct": 46.86, "pacePct": 27.78}, {"campaign": "Air France", "date": "2026-10-20", "imp": 85052, "cumPct": 52.55, "pacePct": 33.33}, {"campaign": "Air France", "date": "2026-10-21", "imp": 81070, "cumPct": 57.97, "pacePct": 38.89}, {"campaign": "Air France", "date": "2026-10-22", "imp": 74523, "cumPct": 62.95, "pacePct": 44.44}, {"campaign": "Air France", "date": "2026-10-23", "imp": 79899, "cumPct": 68.3, "pacePct": 50.0}, {"campaign": "Air France", "date": "2026-10-24", "imp": 74769, "cumPct": 73.3, "pacePct": 55.56}, {"campaign": "Air France", "date": "2026-10-25", "imp": 68122, "cumPct": 77.85, "pacePct": 61.11}, {"campaign": "Air France", "date": "2026-10-26", "imp": 68288, "cumPct": 82.42, "pacePct": 66.67}, {"campaign": "Air France", "date": "2026-10-27", "imp": 61925, "cumPct": 86.56, "pacePct": 72.22}, {"campaign": "Air France", "date": "2026-10-28", "imp": 61693, "cumPct": 90.68, "pacePct": 77.78}, {"campaign": "Air France", "date": "2026-10-29", "imp": 64533, "cumPct": 95.0, "pacePct": 83.33}, {"campaign": "Air France", "date": "2026-10-30", "imp": 52201, "cumPct": 98.49, "pacePct": 88.89}, {"campaign": "Air France", "date": "2026-10-31", "imp": 61120, "cumPct": 102.58, "pacePct": 94.44}, {"campaign": "Air France", "date": "2026-11-01", "imp": 37949, "cumPct": 105.12, "pacePct": 100.0}], "pubs": [{"key": "intimissimi|Conde Nast JP", "campaign": "intimissimi", "publisher": "Conde Nast JP", "imp": 723938, "sharePct": 31.4, "last24": 61, "cv": 1.37, "role": "上限固定（変動大）"}, {"key": "intimissimi|Shueisha", "campaign": "intimissimi", "publisher": "Shueisha", "imp": 607114, "sharePct": 26.3, "last24": 1327, "cv": 1.26, "role": "上限固定（変動大）"}, {"key": "intimissimi|Shogakukan", "campaign": "intimissimi", "publisher": "Shogakukan", "imp": 594658, "sharePct": 25.8, "last24": 11929, "cv": 1.25, "role": "上限固定（変動大）"}, {"key": "intimissimi|Hearst JP", "campaign": "intimissimi", "publisher": "Hearst JP", "imp": 257469, "sharePct": 11.2, "last24": 5236, "cv": 0.36, "role": "上限で固定"}, {"key": "intimissimi|CCC Media House", "campaign": "intimissimi", "publisher": "CCC Media House", "imp": 122469, "sharePct": 5.3, "last24": 2012, "cv": 1.03, "role": "上限固定（変動大）"}, {"key": "ROLEX TIFF|Kodansha", "campaign": "ROLEX TIFF", "publisher": "Kodansha", "imp": 941443, "sharePct": 35.5, "last24": 0, "cv": 0.57, "role": "停止中"}, {"key": "ROLEX TIFF|Conde Nast JP", "campaign": "ROLEX TIFF", "publisher": "Conde Nast JP", "imp": 859783, "sharePct": 32.4, "last24": 0, "cv": 0.91, "role": "停止中"}, {"key": "ROLEX TIFF|Hypebeast UK", "campaign": "ROLEX TIFF", "publisher": "Hypebeast UK", "imp": 206151, "sharePct": 7.8, "last24": 0, "cv": 0.43, "role": "停止中"}, {"key": "ROLEX TIFF|Shogakukan", "campaign": "ROLEX TIFF", "publisher": "Shogakukan", "imp": 165339, "sharePct": 6.2, "last24": 0, "cv": 0.63, "role": "停止中"}, {"key": "ROLEX TIFF|Shueisha", "campaign": "ROLEX TIFF", "publisher": "Shueisha", "imp": 157964, "sharePct": 6.0, "last24": 0, "cv": 0.29, "role": "停止中"}, {"key": "ROLEX TIFF|Bugeishunju", "campaign": "ROLEX TIFF", "publisher": "Bugeishunju", "imp": 126264, "sharePct": 4.8, "last24": 0, "cv": 0.45, "role": "停止中"}, {"key": "ROLEX TIFF|Four M", "campaign": "ROLEX TIFF", "publisher": "Four M", "imp": 76005, "sharePct": 2.9, "last24": 0, "cv": 0.09, "role": "停止中"}, {"key": "ROLEX TIFF|Magazine House", "campaign": "ROLEX TIFF", "publisher": "Magazine House", "imp": 61507, "sharePct": 2.3, "last24": 0, "cv": 0.44, "role": "停止中"}, {"key": "ROLEX TIFF|Infas Publications", "campaign": "ROLEX TIFF", "publisher": "Infas Publications", "imp": 47872, "sharePct": 1.8, "last24": 0, "cv": 2.23, "role": "停止中"}, {"key": "ROLEX TIFF|Sekai Bunka Holdings", "campaign": "ROLEX TIFF", "publisher": "Sekai Bunka Holdings", "imp": 8945, "sharePct": 0.3, "last24": 0, "cv": 0.29, "role": "停止中"}, {"key": "Ralph Lauren|Conde Nast JP", "campaign": "Ralph Lauren", "publisher": "Conde Nast JP", "imp": 525301, "sharePct": 42.7, "last24": 16199, "cv": 0.65, "role": "上限固定（変動大）"}, {"key": "Ralph Lauren|Shogakukan", "campaign": "Ralph Lauren", "publisher": "Shogakukan", "imp": 158628, "sharePct": 12.9, "last24": 4295, "cv": 0.33, "role": "上限で固定"}, {"key": "Ralph Lauren|Kodansha", "campaign": "Ralph Lauren", "publisher": "Kodansha", "imp": 150903, "sharePct": 12.3, "last24": 5461, "cv": 0.27, "role": "調整役候補"}, {"key": "Ralph Lauren|Bugeishunju", "campaign": "Ralph Lauren", "publisher": "Bugeishunju", "imp": 97883, "sharePct": 8.0, "last24": 2768, "cv": 0.18, "role": "調整役候補"}, {"key": "Ralph Lauren|Sekai Bunka Holdings", "campaign": "Ralph Lauren", "publisher": "Sekai Bunka Holdings", "imp": 78260, "sharePct": 6.4, "last24": 3220, "cv": 0.23, "role": "調整役候補"}, {"key": "Ralph Lauren|Shufu to Seikatsu Sha", "campaign": "Ralph Lauren", "publisher": "Shufu to Seikatsu Sha", "imp": 72301, "sharePct": 5.9, "last24": 2449, "cv": 0.34, "role": "上限で固定"}, {"key": "Ralph Lauren|Four M", "campaign": "Ralph Lauren", "publisher": "Four M", "imp": 48357, "sharePct": 3.9, "last24": 1608, "cv": 0.26, "role": "調整役候補"}, {"key": "Ralph Lauren|Infas Publications", "campaign": "Ralph Lauren", "publisher": "Infas Publications", "imp": 47708, "sharePct": 3.9, "last24": 0, "cv": 2.01, "role": "停止中"}, {"key": "Ralph Lauren|Magazine House", "campaign": "Ralph Lauren", "publisher": "Magazine House", "imp": 33509, "sharePct": 2.7, "last24": 1509, "cv": 0.51, "role": "上限で固定"}, {"key": "Ralph Lauren|NIkkei", "campaign": "Ralph Lauren", "publisher": "NIkkei", "imp": 13102, "sharePct": 1.1, "last24": 301, "cv": 0.38, "role": "上限で固定"}, {"key": "Ralph Lauren|Shueisha", "campaign": "Ralph Lauren", "publisher": "Shueisha", "imp": 5205, "sharePct": 0.4, "last24": 0, "cv": 0.68, "role": "停止中"}, {"key": "Apple|Shueisha", "campaign": "Apple", "publisher": "Shueisha", "imp": 600036, "sharePct": 51.7, "last24": 82853, "cv": 0.19, "role": "日次キャップ固定（主要媒体）"}, {"key": "Apple|Kodansha", "campaign": "Apple", "publisher": "Kodansha", "imp": 207529, "sharePct": 17.9, "last24": 22225, "cv": 0.29, "role": "調整役候補"}, {"key": "Apple|Shogakukan", "campaign": "Apple", "publisher": "Shogakukan", "imp": 170126, "sharePct": 14.7, "last24": 21829, "cv": 0.19, "role": "調整役候補"}, {"key": "Apple|Infas Publications", "campaign": "Apple", "publisher": "Infas Publications", "imp": 56996, "sharePct": 4.9, "last24": 7335, "cv": 0.19, "role": "調整役候補"}, {"key": "Apple|Shufu to Seikatsu Sha", "campaign": "Apple", "publisher": "Shufu to Seikatsu Sha", "imp": 48831, "sharePct": 4.2, "last24": 6183, "cv": 0.19, "role": "調整役候補"}, {"key": "Apple|Bugeishunju", "campaign": "Apple", "publisher": "Bugeishunju", "imp": 48288, "sharePct": 4.2, "last24": 6146, "cv": 0.19, "role": "調整役候補"}, {"key": "Apple|Bunkagakuen", "campaign": "Apple", "publisher": "Bunkagakuen", "imp": 28582, "sharePct": 2.5, "last24": 3095, "cv": 0.36, "role": "上限で固定"}, {"key": "Air France|Conde Nast JP", "campaign": "Air France", "publisher": "Conde Nast JP", "imp": 713820, "sharePct": 45.4, "last24": 21928, "cv": 0.21, "role": "日次キャップ固定（主要媒体）"}, {"key": "Air France|Bugeishunju", "campaign": "Air France", "publisher": "Bugeishunju", "imp": 310181, "sharePct": 19.7, "last24": 1770, "cv": 0.34, "role": "上限で固定"}, {"key": "Air France|Kodansha", "campaign": "Air France", "publisher": "Kodansha", "imp": 182405, "sharePct": 11.6, "last24": 294, "cv": 0.46, "role": "上限で固定"}, {"key": "Air France|Sekai Bunka Holdings", "campaign": "Air France", "publisher": "Sekai Bunka Holdings", "imp": 94583, "sharePct": 6.0, "last24": 6779, "cv": 0.79, "role": "上限固定（変動大）"}, {"key": "Air France|Magazine House", "campaign": "Air France", "publisher": "Magazine House", "imp": 54790, "sharePct": 3.5, "last24": 1112, "cv": 0.57, "role": "上限で固定"}, {"key": "Air France|Shogakukan", "campaign": "Air France", "publisher": "Shogakukan", "imp": 53935, "sharePct": 3.4, "last24": 1752, "cv": 0.55, "role": "上限で固定"}, {"key": "Air France|CCC Media House", "campaign": "Air France", "publisher": "CCC Media House", "imp": 53702, "sharePct": 3.4, "last24": 334, "cv": 0.4, "role": "上限で固定"}, {"key": "Air France|Yomiuri Shimbun", "campaign": "Air France", "publisher": "Yomiuri Shimbun", "imp": 44714, "sharePct": 2.8, "last24": 1790, "cv": 0.18, "role": "上限で固定"}, {"key": "Air France|The Rake Japan", "campaign": "Air France", "publisher": "The Rake Japan", "imp": 35367, "sharePct": 2.2, "last24": 1537, "cv": 0.26, "role": "上限で固定"}, {"key": "Air France|Shueisha", "campaign": "Air France", "publisher": "Shueisha", "imp": 28396, "sharePct": 1.8, "last24": 653, "cv": 0.28, "role": "上限で固定"}], "events": [{"campaign": "intimissimi", "date": "11/11", "sortKey": "2026-11-11 11", "title": "約束Imp 100%到達", "body": "11/11 11:00 に到達（終了まで残り約 19.5 日）"}, {"campaign": "intimissimi", "date": "11/9", "sortKey": "2026-11-09 00", "title": "Conde Nast JP の配信急増（停止状態から再開）", "body": "11/9〜11/11 に計 192,140 Imp（直前7日はほぼ配信なし）"}, {"campaign": "intimissimi", "date": "11/1", "sortKey": "2026-11-01 00", "title": "Conde Nast JP のスパイク", "body": "11/1 に計 24,516 Imp（直前7日平均の最大 5.0 倍）"}, {"campaign": "intimissimi", "date": "9/21", "sortKey": "2026-09-21 15", "title": "開始日前の配信", "body": "開始日 9/27 より前に 19 Imp 配信"}, {"campaign": "ROLEX TIFF", "date": "10/29", "sortKey": "2026-10-29 20", "title": "約束Imp 100%到達", "body": "10/29 20:00 に到達（終了まで残り約 20.2 日）"}, {"campaign": "ROLEX TIFF", "date": "10/29", "sortKey": "2026-10-29 00", "title": "Kodansha のスパイク", "body": "10/29 に計 175,202 Imp（直前7日平均の最大 3.0 倍）"}, {"campaign": "ROLEX TIFF", "date": "10/19", "sortKey": "2026-10-19 00", "title": "配信開始の遅れ", "body": "開始日 10/1 から 18 日後に配信開始"}, {"campaign": "Ralph Lauren", "date": "11/9", "sortKey": "2026-11-09 00", "title": "Conde Nast JP のスパイク", "body": "11/9〜11/10 に計 101,827 Imp（直前7日平均の最大 6.8 倍）"}, {"campaign": "Ralph Lauren", "date": "10/27", "sortKey": "2026-10-27 00", "title": "Infas Publications の配信急増（停止状態から再開）", "body": "10/27 に計 24,461 Imp（直前7日はほぼ配信なし）"}, {"campaign": "Ralph Lauren", "date": "10/19", "sortKey": "2026-10-19 13", "title": "開始日前の配信", "body": "開始日 10/20 より前に 47 Imp 配信"}, {"campaign": "Apple", "date": "9/25", "sortKey": "2026-09-25 00", "title": "終了日後の配信", "body": "終了日を過ぎて 28 Imp 配信"}, {"campaign": "Air France", "date": "11/2", "sortKey": "2026-11-02 00", "title": "終了日後の配信", "body": "終了日を過ぎて 8 Imp 配信"}, {"campaign": "Air France", "date": "10/31", "sortKey": "2026-10-31 13", "title": "約束Imp 100%到達", "body": "10/31 13:00 に到達（終了まで残り約 1.5 日）"}, {"campaign": "Air France", "date": "10/29", "sortKey": "2026-10-29 00", "title": "Sekai Bunka Holdings のスパイク", "body": "10/29 に計 15,910 Imp（直前7日平均の最大 5.0 倍）"}, {"campaign": "Air France", "date": "10/8", "sortKey": "2026-10-08 14", "title": "開始日前の配信", "body": "開始日 10/15 より前に 271,509 Imp 配信"}], "plans": [{"campaign": "intimissimi", "target": "100.5", "lag": "0", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 553640, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "100.5", "lag": "3", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 553640, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "100.5", "lag": "6", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 553640, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "100.5", "lag": "12", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 553640, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "101", "lag": "0", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 543440, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "101", "lag": "3", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 543440, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "101", "lag": "6", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 543440, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "101", "lag": "12", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 543440, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "102", "lag": "0", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 523040, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "102", "lag": "3", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 523040, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "102", "lag": "6", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 523040, "note": "既に目標を超過しています"}, {"campaign": "intimissimi", "target": "102", "lag": "12", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 523040, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "100.5", "lag": "0", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 385096, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "100.5", "lag": "3", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 385096, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "100.5", "lag": "6", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 385096, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "100.5", "lag": "12", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 385096, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "101", "lag": "0", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 373822, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "101", "lag": "3", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 373822, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "101", "lag": "6", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 373822, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "101", "lag": "12", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 373822, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "102", "lag": "0", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 351273, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "102", "lag": "3", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 351273, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "102", "lag": "6", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 351273, "note": "既に目標を超過しています"}, {"campaign": "ROLEX TIFF", "target": "102", "lag": "12", "stopAt": "今すぐ", "reachAt": "到達済み", "needImp": 0, "saveImp": 351273, "note": "既に目標を超過しています"}, {"campaign": "Ralph Lauren", "target": "100.5", "lag": "0", "stopAt": "12/7 02:00", "reachAt": "12/7 02:00", "needImp": 778843, "saveImp": 336552, "note": "停止ラグ 0 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "100.5", "lag": "3", "stopAt": "12/6 23:00", "reachAt": "12/7 02:00", "needImp": 778843, "saveImp": 336552, "note": "停止ラグ 3 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "100.5", "lag": "6", "stopAt": "12/6 20:00", "reachAt": "12/7 02:00", "needImp": 778843, "saveImp": 336552, "note": "停止ラグ 6 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "100.5", "lag": "12", "stopAt": "12/6 14:00", "reachAt": "12/7 02:00", "needImp": 778843, "saveImp": 336552, "note": "停止ラグ 12 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "101", "lag": "0", "stopAt": "12/7 09:00", "reachAt": "12/7 09:00", "needImp": 788843, "saveImp": 326552, "note": "停止ラグ 0 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "101", "lag": "3", "stopAt": "12/7 06:00", "reachAt": "12/7 09:00", "needImp": 788843, "saveImp": 326552, "note": "停止ラグ 3 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "101", "lag": "6", "stopAt": "12/7 03:00", "reachAt": "12/7 09:00", "needImp": 788843, "saveImp": 326552, "note": "停止ラグ 6 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "101", "lag": "12", "stopAt": "12/6 21:00", "reachAt": "12/7 09:00", "needImp": 788843, "saveImp": 326552, "note": "停止ラグ 12 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "102", "lag": "0", "stopAt": "12/7 21:00", "reachAt": "12/7 21:00", "needImp": 808843, "saveImp": 306552, "note": "停止ラグ 0 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "102", "lag": "3", "stopAt": "12/7 18:00", "reachAt": "12/7 21:00", "needImp": 808843, "saveImp": 306552, "note": "停止ラグ 3 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "102", "lag": "6", "stopAt": "12/7 15:00", "reachAt": "12/7 21:00", "needImp": 808843, "saveImp": 306552, "note": "停止ラグ 6 時間を見込んだ時刻"}, {"campaign": "Ralph Lauren", "target": "102", "lag": "12", "stopAt": "12/7 09:00", "reachAt": "12/7 21:00", "needImp": 808843, "saveImp": 306552, "note": "停止ラグ 12 時間を見込んだ時刻"}], "summary": [{"id": "all", "campaigns": 5, "live": 3, "ended": 2, "attention": 2, "asof": "11/16 11:00（JST）", "overTotal": 738528}]}</script>
+<script>
+(function () {
+  var ORDER = ['超過中', '未達リスク', '超過リスク', '順調', '超過・停止済み', '終了・未達', '終了・超過', '終了・適正'];
+  var GROUPS = [
+    { id: 'action', label: '要対応', note: '超過中・超過リスク・未達リスク', tone: 'bad', match: ['超過中', '超過リスク', '未達リスク'] },
+    { id: 'ok', label: '順調', note: '100〜103%で着地見込み', tone: 'ok', match: ['順調'] },
+    { id: 'ended', label: '終了・停止済み', note: '期間終了または配信停止済み', tone: 'neutral', match: ['超過・停止済み', '終了・未達', '終了・超過', '終了・適正'] }
+  ];
+  var TARGETS = ['100.5', '101', '102'];
+  var LAGS = ['0', '3', '6', '12'];
+  var state = { group: null, campaign: null, target: '101', lag: '3' };
+  var D = null;
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function n(v) { return v === null || v === undefined ? '—' : Math.round(+v).toLocaleString('en-US'); }
+  function p(v) { return v === null || v === undefined ? '—' : (+v).toFixed(1) + '%'; }
+  function tone(s) {
+    if (['超過中', '終了・超過', '終了・未達', '超過・停止済み'].indexOf(s) >= 0) return 'bad';
+    if (['超過リスク', '未達リスク'].indexOf(s) >= 0) return 'warn';
+    if (['順調', '終了・適正'].indexOf(s) >= 0) return 'ok';
+    return 'neutral';
+  }
+  function chip(s) { var c = el('span', 'chip ' + tone(s)); c.appendChild(el('span', 'dot')); c.appendChild(document.createTextNode(s)); return c; }
+  function sorted() { return D.campaigns.slice().sort(function (a, b) { return ORDER.indexOf(a.status) - ORDER.indexOf(b.status); }); }
+  function current() { return D.campaigns.filter(function (c) { return c.campaign === state.campaign; })[0]; }
+  function isLive(c) { return c.live === '配信中' && c.status !== '超過・停止済み'; }
+
+  function renderHeader() {
+    var s = D.summary[0];
+    $('asof').textContent = s.asof;
+    var lead = $('lead'); lead.textContent = '';
+    lead.append('全 ', el('b', 'num', n(s.campaigns)), ' キャンペーンのうち、対応が必要なのは ', el('b', 'num', n(s.attention)), ' 件です。約束Impを超えて配信した量は合計 ', el('b', 'num', n(s.overTotal)), ' Imp です。');
+  }
+
+  function renderGroups() {
+    var wrap = $('groups'); wrap.textContent = '';
+    GROUPS.forEach(function (g) {
+      var count = D.campaigns.filter(function (c) { return g.match.indexOf(c.status) >= 0; }).length;
+      var b = el('button', 'group'); b.type = 'button';
+      b.setAttribute('aria-pressed', String(state.group === g.id));
+      var lab = el('div', 'group-label'); var d = el('span', 'dot');
+      d.style.background = g.tone === 'bad' ? 'var(--bad)' : g.tone === 'ok' ? 'var(--ok)' : '#7e7e7e';
+      lab.append(d, g.label);
+      b.append(lab, el('div', 'group-count num', String(count)), el('div', 'group-note', g.note));
+      b.addEventListener('click', function () { state.group = state.group === g.id ? null : g.id; renderGroups(); renderTable(); });
+      wrap.appendChild(b);
+    });
+  }
+
+  function renderTable() {
+    var tb = $('camp-rows'); tb.textContent = '';
+    var g = GROUPS.filter(function (x) { return x.id === state.group; })[0];
+    var rows = sorted().filter(function (c) { return !g || g.match.indexOf(c.status) >= 0; });
+    if (!rows.length) { var tr0 = el('tr'); var td0 = el('td', null, '該当するキャンペーンはありません。'); td0.colSpan = 8; tr0.appendChild(td0); tb.appendChild(tr0); return; }
+    rows.forEach(function (c) {
+      var tr = el('tr', 'camp-row' + (c.campaign === state.campaign ? ' is-sel' : ''));
+      var td = el('td'); var btn = el('button', 'camp-name', c.campaign); btn.type = 'button';
+      btn.setAttribute('aria-label', c.campaign + ' の詳細を表示');
+      td.appendChild(btn); tr.appendChild(td);
+      tr.appendChild(el('td', null, c.period));
+      tr.appendChild(el('td', 'r', n(c.goal)));
+      tr.appendChild(el('td', 'r', n(c.delivered)));
+      var tdp = el('td'); var top = el('div', 'bar-top'); top.append(el('b', null, p(c.progressPct)), el('span', null, '均等 ' + p(c.pacePct)));
+      var bar = el('div', 'bar'); var fill = el('div', 'bar-fill' + (c.progressPct > 100 ? ' over' : ''));
+      fill.style.width = Math.min(c.progressPct, 100) + '%';
+      var pace = el('div', 'bar-pace'); pace.style.left = 'calc(' + Math.min(c.pacePct, 100) + '% - 1px)';
+      bar.append(fill, pace); tdp.append(top, bar); tr.appendChild(tdp);
+      tr.appendChild(el('td', 'r', p(c.forecastPct)));
+      var tds = el('td'); tds.appendChild(chip(c.status)); tr.appendChild(tds);
+      tr.appendChild(el('td', 'action-cell', c.action));
+      function open() { select(c.campaign, true); }
+      tr.addEventListener('click', open);
+      tb.appendChild(tr);
+    });
+  }
+
+  function select(name, scroll) {
+    state.campaign = name;
+    try { history.replaceState(null, '', '#' + encodeURIComponent(name).replace(/%20/g, '-')); } catch (e) {}
+    renderTable(); renderDetail();
+    if (scroll) $('detail').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  function renderToggles() {
+    [['tg-target', TARGETS, 'target', '%'], ['tg-lag', LAGS, 'lag', '時間']].forEach(function (t) {
+      var wrap = $(t[0]); wrap.textContent = '';
+      t[1].forEach(function (v) {
+        var b = el('button', null, v + t[3]); b.type = 'button';
+        b.setAttribute('aria-pressed', String(state[t[2]] === v));
+        b.addEventListener('click', function () { state[t[2]] = v; renderToggles(); renderPlan(); });
+        wrap.appendChild(b);
+      });
+    });
+  }
+
+  function renderPlan() {
+    var c = current();
+    var row = D.plans.filter(function (r) { return r.campaign === c.campaign && String(r.target) === state.target && String(r.lag) === state.lag; })[0];
+    $('p-stop').textContent = row ? row.stopAt : '—';
+    $('p-note').textContent = row ? row.note : '';
+    $('p-reach').textContent = row ? row.reachAt : '—';
+    $('p-need').textContent = row ? 'あと ' + n(row.needImp) + ' Imp' : '';
+    $('p-save').textContent = row ? n(row.saveImp) : '—';
+    $('p-req').textContent = c.reqDaily101 === null || c.reqDaily101 <= 0 ? '配信停止' : n(c.reqDaily101);
+    $('p-req-sub').textContent = '現在 ' + n(c.curDaily) + ' Imp / 日・残り ' + n(c.remainingHours) + ' 時間';
+  }
+
+  function renderDetail() {
+    var c = current(); if (!c) return;
+    $('d-name').textContent = c.campaign;
+    var ch = $('d-chip'); ch.textContent = ''; ch.appendChild(chip(c.status));
+    $('d-meta').textContent = '期間 ' + c.period + '（' + c.days + '日間）　配信媒体 ' + c.pubCount + '社';
+    $('d-callout').className = 'callout ' + tone(c.status);
+    $('d-action').textContent = c.action;
+    $('k-goal').textContent = n(c.goal);
+    $('k-del').textContent = n(c.delivered);
+    $('k-del-sub').textContent = (isLive(c) ? D.summary[0].asof : '最終') + ' 時点';
+    $('k-prog').textContent = p(c.progressPct);
+    $('k-prog-sub').textContent = '均等ペースなら ' + p(c.pacePct) + '（差 ' + (c.gapPt >= 0 ? '+' : '') + c.gapPt.toFixed(1) + 'pt）';
+    $('k-fc').textContent = p(c.forecastPct);
+    $('k-fc-sub').textContent = n(c.forecast) + ' Imp（直近24時間のペースで継続した場合）';
+    $('k-24').textContent = n(c.last24);
+    $('k-24-sub').textContent = n(c.ratePerHour) + ' Imp / 時';
+    var live = isLive(c);
+    $('plan').hidden = !live; $('retro').hidden = live;
+    if (live) { renderToggles(); renderPlan(); }
+    $('r-100').textContent = c.reach100; $('r-101').textContent = c.reach101; $('r-over').textContent = n(c.overImp);
+    drawCharts();
+    renderPubs(c); renderEvents(c);
+  }
+
+  function renderPubs(c) {
+    var tb = $('pub-rows'); tb.textContent = '';
+    D.pubs.filter(function (r) { return r.campaign === c.campaign; }).sort(function (a, b) { return b.imp - a.imp; }).forEach(function (r) {
+      var tr = el('tr');
+      tr.append(el('td', null, r.publisher), el('td', 'r', n(r.imp)), el('td', 'r', p(r.sharePct)), el('td', 'r', n(r.last24)), el('td', 'r', (+r.cv).toFixed(2)), el('td', 'role', r.role));
+      tb.appendChild(tr);
+    });
+  }
+
+  function renderEvents(c) {
+    var ul = $('events'); ul.textContent = '';
+    var rows = D.events.filter(function (r) { return r.campaign === c.campaign; }).sort(function (a, b) { return a.sortKey < b.sortKey ? 1 : -1; });
+    if (!rows.length) { ul.appendChild(el('li', null, '検知されたイベントはありません。')); return; }
+    rows.forEach(function (r) {
+      var li = el('li'); var box = el('div');
+      box.append(el('div', 'ev-title', r.title), el('div', 'ev-body', r.body));
+      li.append(el('span', 'ev-date num', r.date), box); ul.appendChild(li);
+    });
+  }
+
+  /* ---- charts (plain SVG) ---- */
+  var NS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs, parent) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  function md(s) { var a = s.split('-'); return (+a[1]) + '/' + (+a[2]); }
+  function niceMax(v) { var e = Math.pow(10, Math.floor(Math.log10(v))); var f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+  function series() { var c = current(); return D.daily.filter(function (r) { return r.campaign === c.campaign; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; }); }
+  function tipFor(box) { var t = el('div', 'tip'); t.hidden = true; box.appendChild(t); return t; }
+  function placeTip(box, tip, x, y, W) {
+    var s = box.clientWidth / W; tip.hidden = false;
+    var left = Math.min(x * s + 10, box.clientWidth - tip.offsetWidth - 4);
+    tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, y * s - 38) + 'px';
+  }
+
+  function drawCum() {
+    var box = $('chart-cum'); box.textContent = '';
+    var rows = series(); if (!rows.length) return;
+    var W = Math.max(box.clientWidth, 300), H = 270, m = { t: 12, r: 52, b: 28, l: 44 };
+    var ymax = niceMax(Math.max(110, Math.max.apply(null, rows.map(function (r) { return Math.max(r.cumPct, r.pacePct); })) * 1.05));
+    var X = function (i) { return m.l + (rows.length === 1 ? 0 : i * (W - m.l - m.r) / (rows.length - 1)); };
+    var Y = function (v) { return H - m.b - v / ymax * (H - m.t - m.b); };
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': '累計進捗と均等ペースの推移' }, box);
+    for (var k = 0; k <= 5; k++) { var v = ymax * k / 5; sv('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: '#f2f2f2' }, svg); var t = sv('text', { x: m.l - 6, y: Y(v) + 4, 'text-anchor': 'end' }, svg); t.textContent = Math.round(v) + '%'; }
+    var step = Math.max(1, Math.ceil(rows.length / Math.max(2, Math.floor(W / 80))));
+    rows.forEach(function (r, i) { if (i % step === 0) { var t = sv('text', { x: X(i), y: H - 8, 'text-anchor': 'middle' }, svg); t.textContent = md(r.date); } });
+    sv('line', { x1: m.l, x2: W - m.r, y1: Y(100), y2: Y(100), stroke: 'var(--bad)', 'stroke-width': 1.5 }, svg);
+    var t100 = sv('text', { x: W - m.r + 4, y: Y(100) + 4 }, svg); t100.textContent = '100%';
+    sv('path', { d: rows.map(function (r, i) { return (i ? 'L' : 'M') + X(i) + ',' + Y(r.pacePct); }).join(''), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, 'stroke-dasharray': '5 4' }, svg);
+    sv('path', { d: rows.map(function (r, i) { return (i ? 'L' : 'M') + X(i) + ',' + Y(r.cumPct); }).join(''), fill: 'none', stroke: '#000', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }, svg);
+    var li = rows.length - 1, last = rows[li];
+    sv('circle', { cx: X(li), cy: Y(last.cumPct), r: 4, fill: '#000' }, svg);
+    var lt = sv('text', { x: X(li) + 6, y: Y(last.cumPct) - 6, 'font-weight': 600 }, svg); lt.textContent = last.cumPct.toFixed(1) + '%'; lt.style.fill = '#000';
+    var tip = tipFor(box), dot = sv('circle', { r: 4, fill: '#000', visibility: 'hidden' }, svg);
+    var hit = sv('rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent' }, svg);
+    hit.addEventListener('pointermove', function (ev) {
+      var r0 = svg.getBoundingClientRect(); var px = (ev.clientX - r0.left) * W / r0.width;
+      var i = Math.max(0, Math.min(rows.length - 1, Math.round((px - m.l) / ((W - m.l - m.r) / Math.max(1, rows.length - 1)))));
+      var r = rows[i]; dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(r.cumPct)); dot.setAttribute('visibility', 'visible');
+      tip.textContent = md(r.date) + '　累計 ' + r.cumPct.toFixed(1) + '%　均等 ' + r.pacePct.toFixed(1) + '%';
+      placeTip(box, tip, X(i), Y(r.cumPct), W);
+    });
+    hit.addEventListener('pointerleave', function () { tip.hidden = true; dot.setAttribute('visibility', 'hidden'); });
+  }
+
+  function drawDaily() {
+    var box = $('chart-daily'); box.textContent = '';
+    var rows = series(); if (!rows.length) return;
+    var c = current();
+    var W = Math.max(box.clientWidth, 300), H = 270, m = { t: 12, r: 10, b: 28, l: 52 };
+    var ymax = niceMax(Math.max.apply(null, rows.map(function (r) { return r.imp; })) || 1);
+    var bw = (W - m.l - m.r) / rows.length;
+    var Y = function (v) { return H - m.b - v / ymax * (H - m.t - m.b); };
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': '日別配信量の推移' }, box);
+    for (var k = 0; k <= 4; k++) { var v = ymax * k / 4; sv('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: '#f2f2f2' }, svg); var t = sv('text', { x: m.l - 6, y: Y(v) + 4, 'text-anchor': 'end' }, svg); t.textContent = v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v); }
+    var step = Math.max(1, Math.ceil(rows.length / Math.max(2, Math.floor(W / 70))));
+    var tip = tipFor(box);
+    rows.forEach(function (r, i) {
+      var inP = r.date >= c.start && r.date <= c.end;
+      var x = m.l + i * bw + bw * 0.12, w = Math.max(1, bw * 0.76);
+      var rect = sv('rect', { x: x, width: w, y: Y(r.imp), height: Math.max(0, H - m.b - Y(r.imp)), fill: inP ? '#000' : '#c7c7c7', rx: Math.min(2, w / 2) }, svg);
+      var hit = sv('rect', { x: m.l + i * bw, width: bw, y: m.t, height: H - m.t - m.b, fill: 'transparent' }, svg);
+      hit.addEventListener('pointermove', function () { tip.textContent = md(r.date) + '　' + n(r.imp) + ' Imp' + (inP ? '' : '（期間外）'); placeTip(box, tip, x + w, Y(r.imp), W); });
+      hit.addEventListener('pointerleave', function () { tip.hidden = true; });
+      if (i % step === 0) { var t = sv('text', { x: m.l + i * bw + bw / 2, y: H - 8, 'text-anchor': 'middle' }, svg); t.textContent = md(r.date); }
+    });
+  }
+
+  function drawCharts() { if (current()) { drawCum(); drawDaily(); } }
+
+  function start(data) {
+    D = data;
+    var hash = decodeURIComponent((location.hash || '').slice(1).replace(/-/g, '%20'));
+    var names = D.campaigns.map(function (c) { return c.campaign; });
+    state.campaign = names.indexOf(hash) >= 0 ? hash : sorted()[0].campaign;
+    renderHeader(); renderGroups(); renderTable(); renderDetail();
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(drawCharts, 150); });
+  }
+
+  function fail(msg) { var e = $('load-error'); e.hidden = false; e.textContent = msg; }
+
+  var embedded = JSON.parse(document.getElementById('embedded-data').textContent);
+  if (CONFIG.DATA_URL) {
+    fetch(CONFIG.DATA_URL, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(start)
+      .catch(function () { fail('最新データを取得できなかったため、このファイルに保存されているデータを表示しています。DATA_URL の設定と公開範囲を確認してください。'); start(embedded); });
+  } else {
+    start(embedded);
+  }
+})();
+</script>
+</body>
+</html>
