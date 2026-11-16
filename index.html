@@ -94,6 +94,12 @@ th:first-child,td:first-child{padding-left:24px} th:last-child,td:last-child{pad
 .plan-cell.main{background:var(--black);color:#fff}
 .plan-cell.main .kpi-label,.plan-cell.main .kpi-sub{color:#c7c7c7}
 .plan-cell.main .kpi-value{color:#fff;font-size:32px}
+.steps{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:st}
+.steps li{counter-increment:st;display:flex;gap:14px;padding:14px 18px;border-radius:var(--r-sm);background:var(--app)}
+.steps li::before{content:counter(st);flex:none;width:24px;height:24px;border-radius:50%;background:var(--black);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.steps b{color:var(--black)}
+.cp{margin-top:20px}
+.cp table{min-width:420px}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:16px}
 .legend{display:flex;flex-wrap:wrap;gap:16px;color:var(--muted);font-size:12px;margin-bottom:8px}
 .sw{display:inline-block;width:16px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
@@ -168,18 +174,23 @@ details p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:70em}
     </div>
 
     <section class="card pad plan" id="plan">
-      <h3>停止計画</h3>
+      <h3>着地コントロール（終了日に100%へ寄せる運用）</h3>
       <div class="toggles">
         <div><div class="tg-label">目標着地率</div><div class="tg" id="tg-target" role="group" aria-label="目標着地率"></div></div>
-        <div><div class="tg-label">停止ラグ（指示から実際に止まるまで）</div><div class="tg" id="tg-lag" role="group" aria-label="停止ラグ"></div></div>
       </div>
       <div class="plan-grid num">
-        <div class="plan-cell main"><div class="kpi-label">停止指示の推奨時刻</div><div class="kpi-value" id="p-stop">…</div><div class="kpi-sub" id="p-note"></div></div>
-        <div class="plan-cell"><div class="kpi-label">目標到達の予測時刻</div><div class="kpi-value" id="p-reach">…</div><div class="kpi-sub" id="p-need"></div></div>
-        <div class="plan-cell"><div class="kpi-label">このまま継続した場合との差</div><div class="kpi-value" id="p-save">…</div><div class="kpi-sub">削減できるImp（Mobkoi負担分）</div></div>
-        <div class="plan-cell"><div class="kpi-label">101%で着地する日次ペース</div><div class="kpi-value" id="p-req">…</div><div class="kpi-sub" id="p-req-sub"></div></div>
+        <div class="plan-cell main"><div class="kpi-label">必要な日次Imp（残り期間平均）</div><div class="kpi-value" id="p-req">…</div><div class="kpi-sub" id="p-req-sub"></div></div>
+        <div class="plan-cell"><div class="kpi-label">現在の日次ペースからの調整</div><div class="kpi-value" id="p-adj">…</div><div class="kpi-sub" id="p-adj-sub"></div></div>
+        <div class="plan-cell"><div class="kpi-label">目標までの残りImp</div><div class="kpi-value" id="p-need">…</div><div class="kpi-sub" id="p-need-sub"></div></div>
+        <div class="plan-cell"><div class="kpi-label">このまま継続した場合の着地</div><div class="kpi-value" id="p-fc">…</div><div class="kpi-sub" id="p-fc-sub"></div></div>
       </div>
-      <p class="note">予測は直近24時間のペースが期間終了まで続く前提です。残り期間が長い場合は、停止時刻よりも日次ペースの調整を優先してください。</p>
+      <h3 style="margin:24px 0 0">運用指示</h3>
+      <ol class="steps" id="p-steps"></ol>
+      <div class="cp scroll" id="cp-wrap">
+        <h3>チェックポイント（この累計に乗っていればOK）</h3>
+        <table class="num"><thead><tr><th>日付（終了時点）</th><th class="r">目標累計Imp</th><th class="r">進捗率</th></tr></thead><tbody id="cp-rows"></tbody></table>
+      </div>
+      <p class="note">必要な日次Impは「(約束Imp × 目標着地率 − 配信済) ÷ 残り日数」です。サイト別キャップは直近24時間の配信比率で按分しています。毎日この表と実績を見比べ、ずれた分を翌日のキャップに上乗せ・差し引きしてください。</p>
     </section>
 
     <section class="card pad" id="retro" hidden>
@@ -205,14 +216,14 @@ details p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:70em}
     </div>
 
     <section class="card">
-      <div class="pad" style="padding-bottom:12px"><h3 style="margin:0">媒体別の状況と推奨アクション</h3></div>
+      <div class="pad" style="padding-bottom:12px"><h3 style="margin:0">サイト別の状況と日次キャップ</h3></div>
       <div class="scroll">
         <table class="num" style="min-width:760px">
-          <thead><tr><th>媒体</th><th class="r">累計Imp</th><th class="r">シェア</th><th class="r">直近24時間</th><th class="r">日別ばらつき</th><th>推奨アクション</th></tr></thead>
+          <thead><tr><th>サイト</th><th class="r">累計Imp</th><th class="r">シェア</th><th class="r">直近24時間</th><th class="r" id="pub-cap-h">推奨日次キャップ</th><th class="r">日別ばらつき</th><th>役割</th></tr></thead>
           <tbody id="pub-rows"></tbody>
         </table>
       </div>
-      <p class="note" style="padding:0 24px 20px">日別ばらつきは日別配信量の変動係数です。小さい媒体ほど毎日同じ量を配信するので、終盤の調整役に向いています。</p>
+      <p class="note" style="padding:0 24px 20px">日別ばらつきは日別配信量の変動係数です。小さいサイトほど毎日同じ量を配信するので、終盤の微調整役に向いています。</p>
     </section>
 
     <section class="card pad">
@@ -225,7 +236,7 @@ details p{color:var(--muted);font-size:13px;margin:8px 0 0;max-width:70em}
     <summary>指標とステータスの定義</summary>
     <p>進捗率は配信済Imp ÷ 約束Imp です。均等ペースは、期間（開始日0時〜終了日24時、JST）のうち経過した時間の割合です。着地予測は、配信済に「直近24時間の配信量 ÷ 24 × 残り時間」を足した値です。</p>
     <p>配信中のステータスは、着地予測が100%未満なら未達リスク、100〜103%なら順調、103%超なら超過リスク、既に100%を超えて配信が続いていれば超過中です。終了したキャンペーンは最終進捗率で未達・適正（100〜103%）・超過に分けます。</p>
-    <p>元データの時刻はUTCのため、9時間足してJSTに変換しています。スパイクは、媒体の日別配信量が直前7日平均の2.5倍超かつ約束Impの1%超の日です。</p>
+    <p>元データの時刻はUTCのため、9時間足してJSTに変換しています。スパイクは、サイトの日別配信量が直前7日平均の2.5倍超かつ約束Impの1%超の日です。</p>
   </details>
 </main>
 
@@ -244,9 +255,8 @@ var CONFIG = { DATA_URL: '' };
     { id: 'ok', label: '順調', note: '100〜103%で着地見込み', tone: 'ok', match: ['順調'] },
     { id: 'ended', label: '終了・停止済み', note: '期間終了または配信停止済み', tone: 'neutral', match: ['超過・停止済み', '終了・未達', '終了・超過', '終了・適正'] }
   ];
-  var TARGETS = ['100.5', '101', '102'];
-  var LAGS = ['0', '3', '6', '12'];
-  var state = { group: null, campaign: null, target: '101', lag: '3' };
+  var TARGETS = ['100', '100.5', '101'];
+  var state = { group: null, campaign: null, target: '100' };
   var D = null;
 
   function $(id) { return document.getElementById(id); }
@@ -306,7 +316,7 @@ var CONFIG = { DATA_URL: '' };
       bar.append(fill, pace); tdp.append(top, bar); tr.appendChild(tdp);
       tr.appendChild(el('td', 'r', p(c.forecastPct)));
       var tds = el('td'); tds.appendChild(chip(c.status)); tr.appendChild(tds);
-      tr.appendChild(el('td', 'action-cell', c.action));
+      tr.appendChild(el('td', 'action-cell', actionText(c)));
       function open() { select(c.campaign, true); }
       tr.addEventListener('click', open);
       tb.appendChild(tr);
@@ -321,36 +331,110 @@ var CONFIG = { DATA_URL: '' };
   }
 
   function renderToggles() {
-    [['tg-target', TARGETS, 'target', '%'], ['tg-lag', LAGS, 'lag', '時間']].forEach(function (t) {
+    [['tg-target', TARGETS, 'target', '%']].forEach(function (t) {
       var wrap = $(t[0]); wrap.textContent = '';
       t[1].forEach(function (v) {
         var b = el('button', null, v + t[3]); b.type = 'button';
         b.setAttribute('aria-pressed', String(state[t[2]] === v));
-        b.addEventListener('click', function () { state[t[2]] = v; renderToggles(); renderPlan(); });
+        b.addEventListener('click', function () { state[t[2]] = v; renderToggles(); renderPlan(); renderPubs(current()); });
         wrap.appendChild(b);
       });
     });
   }
 
+  function siteName(r) { return r.site || r.publisher; }
+  function addDays(d, k) { var x = new Date(d.getTime()); x.setDate(x.getDate() + k); return x; }
+  function mdj(d) { return (d.getMonth() + 1) + '/' + d.getDate(); }
+  function guide(c, target) {
+    var t = +(target || '100') / 100;
+    var days = Math.max(c.remainingHours / 24, 0);
+    var need = c.goal * t - c.delivered;
+    var req = days > 0 ? need / days : null;
+    var cur = c.last24 || 0;
+    var g = { t: t, days: days, need: need, req: req, cur: cur, ratio: req !== null && cur > 0 ? req / cur : null };
+    if (need <= 0) g.kind = 'reached';
+    else if (days <= 0) g.kind = 'ended';
+    else if (cur <= 0) g.kind = 'paused';
+    else if (g.ratio < 0.97) g.kind = 'down';
+    else if (g.ratio > 1.03) g.kind = 'up';
+    else g.kind = 'keep';
+    return g;
+  }
+  function pctAdj(r) { var v = (r - 1) * 100; return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(0) + '%'; }
+  function actionText(c) {
+    if (!isLive(c)) return c.action;
+    var g = guide(c, '100');
+    if (g.kind === 'reached') return '既に ' + p(c.progressPct) + ' で100%超過。これ以上は着地率を下げられないため、残り期間は全サイトで配信を止めたままにする';
+    if (g.kind === 'paused') return '配信が止まっています。日次 ' + n(g.req) + ' Imp で再開すると終了日に100%着地';
+    if (g.kind === 'down') return '日次 ' + n(g.req) + ' Imp に絞る（現在比 ' + pctAdj(g.ratio) + '）と終了日に100%着地';
+    if (g.kind === 'up') return '日次 ' + n(g.req) + ' Imp に引き上げる（現在比 ' + pctAdj(g.ratio) + '）と終了日に100%着地';
+    return '現在のペース（日次 ' + n(g.cur) + ' Imp）を維持すれば終了日に100%着地';
+  }
+  function liveSites(c) { return D.pubs.filter(function (r) { return r.campaign === c.campaign && r.last24 > 0; }); }
+  function capFor(c, r, g) {
+    if (!g || g.req === null || g.req <= 0) return 0;
+    var tot = liveSites(c).reduce(function (a, x) { return a + x.last24; }, 0);
+    return tot > 0 && r.last24 > 0 ? g.req * r.last24 / tot : 0;
+  }
+
   function renderPlan() {
-    var c = current();
-    var row = D.plans.filter(function (r) { return r.campaign === c.campaign && String(r.target) === state.target && String(r.lag) === state.lag; })[0];
-    $('p-stop').textContent = row ? row.stopAt : '—';
-    $('p-note').textContent = row ? row.note : '';
-    $('p-reach').textContent = row ? row.reachAt : '—';
-    $('p-need').textContent = row ? 'あと ' + n(row.needImp) + ' Imp' : '';
-    $('p-save').textContent = row ? n(row.saveImp) : '—';
-    $('p-req').textContent = c.reqDaily101 === null || c.reqDaily101 <= 0 ? '配信停止' : n(c.reqDaily101);
-    $('p-req-sub').textContent = '現在 ' + n(c.curDaily) + ' Imp / 日・残り ' + n(c.remainingHours) + ' 時間';
+    var c = current(); var g = guide(c, state.target);
+    var tlabel = state.target + '%';
+    $('p-req').textContent = g.kind === 'reached' ? '0（停止）' : n(g.req);
+    $('p-req-sub').textContent = g.kind === 'reached' ? '既に目標超過のため配信不要（残り ' + g.days.toFixed(1) + ' 日）' : '残り ' + g.days.toFixed(1) + ' 日・終了 ' + md(c.end) + ' に ' + tlabel + ' 着地';
+    $('p-adj').textContent = g.kind === 'reached' ? '−100%' : g.ratio === null ? '再開' : pctAdj(g.ratio);
+    $('p-adj-sub').textContent = '現在 ' + n(g.cur) + ' Imp / 日（直近24時間）';
+    $('p-need').textContent = g.need > 0 ? n(g.need) : '到達済み';
+    $('p-need-sub').textContent = g.need > 0 ? '約束Imp × ' + tlabel + ' まで' : n(-g.need) + ' Imp 超過';
+    $('p-fc').textContent = p(c.forecastPct);
+    $('p-fc-sub').textContent = n(c.forecast) + ' Imp（調整しない場合）';
+
+    var sites = liveSites(c).slice().sort(function (a, b) { return a.cv - b.cv; });
+    var stable = sites.filter(function (r) { return r.cv <= 0.4; }).map(siteName);
+    var wild = sites.filter(function (r) { return r.cv > 0.8; }).map(siteName);
+    var steps = [];
+    function add() { var li = el('li'); var d = el('div'); for (var i = 0; i < arguments.length; i++) { var a = arguments[i]; d.append(typeof a === 'string' ? a : a); } li.appendChild(d); steps.push(li); }
+    if (g.kind === 'reached') {
+      add('既に約束Impの ', el('b', null, p(c.progressPct)), ' に達しています。配信を減らしても着地率は下がらないため、', el('b', null, '残り期間は全サイトの配信を止めたまま'), 'にしてください。');
+      add('アドサーバーで終了日・総量キャップが正しく入っているか確認し、自動で再開しない設定にしてください。');
+      add('超過分 ', el('b', null, n(c.delivered - c.goal) + ' Imp'), ' は振り返りに記録してください。次回は配信開始時から日次キャップとチェックポイントで管理し、100%到達前に総量キャップで自動停止させてください。');
+    } else {
+      add('キャンペーン全体の日次キャップを ', el('b', null, n(g.req) + ' Imp / 日'), ' に設定（現在 ' + n(g.cur) + '、' + (g.ratio === null ? '再開' : pctAdj(g.ratio)) + '）。サイト別の目安は下の「推奨日次キャップ」列です。');
+      if (g.kind === 'down') add('配信が多すぎます。', el('b', null, wild.length ? '変動の大きいサイト（' + wild.join('、') + '）から先に' : 'シェアの大きいサイトから先に'), 'キャップを下げ、急な配信増を防いでください。');
+      if (g.kind === 'up' || g.kind === 'paused') add('配信が足りません。安定しているサイトのキャップを上げ、それでも不足する場合は配信サイトの追加・ターゲティング緩和を検討してください。', g.ratio !== null && g.ratio > 1.5 ? el('b', null, ' 必要ペースが現在の1.5倍超のため、期間延長や補填の相談も早めに。') : '');
+      if (g.kind === 'keep') add('現在のペースが適正です。キャップは今の設定のまま維持してください。');
+      add('毎日、下のチェックポイントと実績累計を比べ、差分を', el('b', null, '翌日の日次キャップに上乗せ・差し引き'), 'してください（差分 ÷ 残り日数）。');
+      add('終了3日前からは毎日2回確認。', el('b', null, stable.length ? '日別ばらつきの小さいサイト（' + stable.slice(0, 3).join('、') + '）' : '日別ばらつきの小さいサイト'), 'で微調整し、変動の大きいサイトはキャップを固定してください。');
+      add('最終日は残りImpに合わせて総量キャップを設定し、', el('b', null, '100%到達で自動停止'), 'するようにしてください。');
+    }
+    var ol = $('p-steps'); ol.textContent = ''; steps.forEach(function (li) { ol.appendChild(li); });
+
+    var tb = $('cp-rows'); tb.textContent = '';
+    $('cp-wrap').hidden = g.kind === 'reached';
+    if (g.kind !== 'reached' && g.req) {
+      var y = +c.end.slice(0, 4); var m = (c.asof || '').match(/(\d+)\/(\d+)/);
+      var start = m ? new Date(y, +m[1] - 1, +m[2]) : new Date();
+      if (start > new Date(c.end)) start.setFullYear(y - 1);
+      var end = new Date(c.end + 'T00:00:00');
+      var pts = []; var k = 7; while (addDays(start, k) < end) { pts.push(addDays(start, k)); k += 7; }
+      if (Math.round((end - start) / 864e5) > 3) pts.push(addDays(end, -3));
+      pts.push(end);
+      pts.sort(function (a, b) { return a - b; }).forEach(function (d) {
+        var dd = Math.max(c.remainingHours - Math.round((end - d) / 864e5) * 24, 0) / 24;
+        var cum = Math.min(c.delivered + g.req * dd, c.goal * g.t);
+        var tr = el('tr'); tr.append(el('td', null, mdj(d) + (+d === +end ? '（最終日）' : '')), el('td', 'r', n(cum)), el('td', 'r', p(cum / c.goal * 100)));
+        tb.appendChild(tr);
+      });
+    }
   }
 
   function renderDetail() {
     var c = current(); if (!c) return;
     $('d-name').textContent = c.campaign;
     var ch = $('d-chip'); ch.textContent = ''; ch.appendChild(chip(c.status));
-    $('d-meta').textContent = '期間 ' + c.period + '（' + c.days + '日間）　配信媒体 ' + c.pubCount + '社';
+    $('d-meta').textContent = '期間 ' + c.period + '（' + c.days + '日間）　配信サイト ' + D.pubs.filter(function (r) { return r.campaign === c.campaign; }).length + '件';
     $('d-callout').className = 'callout ' + tone(c.status);
-    $('d-action').textContent = c.action;
+    $('d-action').textContent = actionText(c);
     $('k-goal').textContent = n(c.goal);
     $('k-del').textContent = n(c.delivered);
     $('k-del-sub').textContent = (isLive(c) ? D.summary[0].asof : '最終') + ' 時点';
@@ -370,9 +454,12 @@ var CONFIG = { DATA_URL: '' };
 
   function renderPubs(c) {
     var tb = $('pub-rows'); tb.textContent = '';
+    var live = isLive(c); var g = live ? guide(c, state.target) : null;
+    $('pub-cap-h').textContent = live ? '推奨日次キャップ' : '—';
     D.pubs.filter(function (r) { return r.campaign === c.campaign; }).sort(function (a, b) { return b.imp - a.imp; }).forEach(function (r) {
       var tr = el('tr');
-      tr.append(el('td', null, r.publisher), el('td', 'r', n(r.imp)), el('td', 'r', p(r.sharePct)), el('td', 'r', n(r.last24)), el('td', 'r', (+r.cv).toFixed(2)), el('td', 'role', r.role));
+      var cap = !live ? '—' : r.last24 <= 0 ? '停止のまま' : g.kind === 'reached' ? '0（停止）' : n(capFor(c, r, g));
+      tr.append(el('td', null, siteName(r)), el('td', 'r', n(r.imp)), el('td', 'r', p(r.sharePct)), el('td', 'r', n(r.last24)), el('td', 'r', cap), el('td', 'r', (+r.cv).toFixed(2)), el('td', 'role', r.role));
       tb.appendChild(tr);
     });
   }
